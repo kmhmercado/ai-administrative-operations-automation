@@ -1,0 +1,396 @@
+{
+  "name": "Daily Administrative Operations Brief",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "5c389ee8-b1eb-4346-a480-b03ae9d469f9",
+      "name": "Daily Brief Schedule"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        208,
+        0
+      ],
+      "id": "e6fdc6ec-5494-4fc5-ae34-6a4714065d9d",
+      "name": "Load Administrative Requests"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "e8388628-c2b5-49e9-9cfb-d4436f9a6a57",
+              "leftValue": "={{ $json.priority }}",
+              "rightValue": "Urgent",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "61d6f415-fd5f-4d0c-b1ea-7da89ed8e780",
+              "leftValue": "={{ $json.priority }}",
+              "rightValue": "High",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "a3df923b-5733-4522-b828-849c91c70a05",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "Pending Confirmation",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "8b786700-278c-4467-b780-000905fdc210",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "Tentative",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "00ce781f-27c6-4f6a-a5ee-1f9c3904f604",
+              "leftValue": "={{ $json.suggested_deadline ? DateTime.fromISO($json.suggested_deadline) : null }}",
+              "rightValue": "={{ $now.startOf('day') }}",
+              "operator": {
+                "type": "dateTime",
+                "operation": "before"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        416,
+        0
+      ],
+      "id": "e55ab482-1932-4fb0-9a3f-a03c3f3af985",
+      "name": "Filter Requests Needing Attention"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "0067828b-b232-4aa3-b7ec-ee681608a612",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "Completed",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            },
+            {
+              "id": "ab0f08c9-defe-44c8-a960-00bf988cd7a4",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "Confirmed",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            },
+            {
+              "id": "c36b6722-654b-41e6-8d4d-06a91eea57e6",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "Cancelled",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            },
+            {
+              "id": "57c15edb-77ef-49e7-a324-4e839ce087cf",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "Declined",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        624,
+        0
+      ],
+      "id": "084c604a-ea76-44ae-aa04-5e116c64d636",
+      "name": "Exclude Closed Requests"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "attention_items",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        832,
+        0
+      ],
+      "id": "bf4d599b-4778-4bc3-86ed-ad0b2b557c29",
+      "name": "Aggregate Attention Items"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_CALENDAR_ID",
+          "mode": "id"
+        },
+        "timeMin": "={{ $now.startOf('day') }}",
+        "timeMax": "={{ $now.endOf('day') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        1040,
+        0
+      ],
+      "id": "ba97f129-1b0c-45e7-8694-f2d04955e1e8",
+      "name": "Load Today’s Calendar Events",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1216,
+        -208
+      ],
+      "id": "ebb36894-866e-4c57-a0a3-50cec6c5dba3",
+      "name": "Combine Requests & Schedule"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an administrative operations assistant.\n\nCreate a concise, factual, professional daily administrative operations brief using ONLY the data provided below.\n\nCurrent date:\n{{ $now.toFormat('yyyy-MM-dd') }}\n\nItems requiring attention:\n{{ JSON.stringify($json.attention_items) }}\n\nToday's calendar event data may also be included in the input.\n\nIMPORTANT RULES:\n- Use ONLY the information provided in the input.\n- Do not invent facts, consequences, systems, approvals, penalties, deadlines, links, participants, or actions.\n- Treat suggested_deadline as the authoritative deadline.\n- If suggested_deadline is earlier than the current date, label the request OVERDUE.\n- Do not repeat outdated relative timing such as \"in 30 minutes\" as if it were still current.\n- Do not use relative wording such as \"today\" or \"tomorrow\" unless it is mathematically correct.\n- Use the provided action_required field exactly as the basis for recommended actions.\n- If there are no calendar events for the current date, state: \"No meetings scheduled for today.\"\n- Do not use Markdown.\n- Output valid HTML only.\n- Do not use code fences.\n- Do not include <html>, <head>, or <body> tags.\n\nSTYLE:\n- Use Arial, sans-serif.\n- Keep the layout clean, professional, and suitable for an internal administrative operations report.\n- Use subtle gray section borders.\n- Use compact tables with readable padding.\n- Highlight Urgent and OVERDUE text using bold red text only.\n- Highlight High priority using bold dark-orange text.\n- Do not use excessive colors.\n- Do not use emojis.\n\nReturn HTML using this structure:\n\n<div style=\"font-family:Arial,sans-serif;color:#222;line-height:1.5;max-width:1100px;\">\n\n  <h2 style=\"margin-bottom:4px;\">\n    Daily Administrative Operations Brief\n  </h2>\n\n  <div style=\"color:#666;margin-bottom:24px;\">\n    {{ $now.toFormat('yyyy-MM-dd') }}\n  </div>\n\n  <div style=\"border-top:1px solid #ddd;padding-top:14px;\">\n    <h3>1. Daily Overview</h3>\n    <ul>\n      <li>...</li>\n    </ul>\n  </div>\n\n  <div style=\"border-top:1px solid #ddd;padding-top:14px;margin-top:20px;\">\n    <h3>2. Urgent Items</h3>\n\n    If urgent items exist, create this table:\n\n    <table style=\"border-collapse:collapse;width:100%;font-size:13px;\">\n      <tr>\n        <th style=\"border:1px solid #ccc;padding:7px;text-align:left;\">Request ID</th>\n        <th style=\"border:1px solid #ccc;padding:7px;text-align:left;\">Requester</th>\n        <th style=\"border:1px solid #ccc;padding:7px;text-align:left;\">Department</th>\n        <th style=\"border:1px solid #ccc;padding:7px;text-align:left;\">Subject</th>\n        <th style=\"border:1px solid #ccc;padding:7px;text-align:left;\">Priority</th>\n        <th style=\"border:1px solid #ccc;padding:7px;text-align:left;\">Status</th>\n        <th style=\"border:1px solid #ccc;padding:7px;text-align:left;\">Suggested Deadline</th>\n        <th style=\"border:1px solid #ccc;padding:7px;text-align:left;\">Action Required</th>\n      </tr>\n      <tr>\n        <td style=\"border:1px solid #ccc;padding:7px;\">...</td>\n      </tr>\n    </table>\n\n    Render Urgent priority and OVERDUE text as:\n    <strong style=\"color:#b42318;\">...</strong>\n\n    If there are none:\n    <p>No urgent items.</p>\n  </div>\n\n  <div style=\"border-top:1px solid #ddd;padding-top:14px;margin-top:20px;\">\n    <h3>3. High Priority Items</h3>\n\n    Use the same table structure.\n\n    Render High priority text as:\n    <strong style=\"color:#a15c00;\">High</strong>\n\n    If there are none:\n    <p>No high priority items.</p>\n  </div>\n\n  <div style=\"border-top:1px solid #ddd;padding-top:14px;margin-top:20px;\">\n    <h3>4. Overdue Items</h3>\n\n    If overdue items exist, use:\n\n    <table style=\"border-collapse:collapse;width:100%;font-size:13px;\">\n      <tr>\n        <th style=\"border:1px solid #ccc;padding:7px;text-align:left;\">Request ID</th>\n        <th style=\"border:1px solid #ccc;padding:7px;text-align:left;\">Priority</th>\n        <th style=\"border:1px solid #ccc;padding:7px;text-align:left;\">Suggested Deadline</th>\n        <th style=\"border:1px solid #ccc;padding:7px;text-align:left;\">Action Required</th>\n      </tr>\n    </table>\n\n    Display OVERDUE clearly in bold red text.\n\n    If there are none:\n    <p>No overdue items.</p>\n  </div>\n\n  <div style=\"border-top:1px solid #ddd;padding-top:14px;margin-top:20px;\">\n    <h3>5. Pending or Tentative Meetings</h3>\n\n    If relevant meetings exist, use:\n\n    <table style=\"border-collapse:collapse;width:100%;font-size:13px;\">\n      <tr>\n        <th style=\"border:1px solid #ccc;padding:7px;text-align:left;\">Meeting Title</th>\n        <th style=\"border:1px solid #ccc;padding:7px;text-align:left;\">Date</th>\n        <th style=\"border:1px solid #ccc;padding:7px;text-align:left;\">Time</th>\n        <th style=\"border:1px solid #ccc;padding:7px;text-align:left;\">Status</th>\n      </tr>\n    </table>\n\n    If there are none:\n    <p>No pending or tentative meetings.</p>\n  </div>\n\n  <div style=\"border-top:1px solid #ddd;padding-top:14px;margin-top:20px;\">\n    <h3>6. Today's Schedule</h3>\n\n    If today's calendar events exist, use:\n\n    <table style=\"border-collapse:collapse;width:100%;font-size:13px;\">\n      <tr>\n        <th style=\"border:1px solid #ccc;padding:7px;text-align:left;\">Meeting</th>\n        <th style=\"border:1px solid #ccc;padding:7px;text-align:left;\">Start</th>\n        <th style=\"border:1px solid #ccc;padding:7px;text-align:left;\">End</th>\n      </tr>\n    </table>\n\n    If there are no events:\n    <p>No meetings scheduled for today.</p>\n  </div>\n\n  <div style=\"border-top:1px solid #ddd;padding-top:14px;margin-top:20px;\">\n    <h3>7. Recommended Priorities</h3>\n\n    <ol>\n      <li>...</li>\n    </ol>\n\n    Rules:\n    - Rank Urgent before High.\n    - Within the same priority, rank overdue items before non-overdue items.\n    - Include the Request ID.\n    - Use only action_required when describing what should be done.\n  </div>\n\n  <div style=\"border-top:1px solid #ddd;margin-top:24px;padding-top:12px;color:#777;font-size:12px;\">\n    Generated automatically by the Administrative Operations Automation System.\n  </div>\n\n</div>",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        1424,
+        -208
+      ],
+      "id": "f924bc7b-27e7-45d8-abe9-1daa3d9ea578",
+      "name": "Generate Daily Operations Brief"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        1424,
+        -16
+      ],
+      "id": "69726e40-f886-4bd2-953a-617a5e9be444",
+      "name": "Daily Brief LLM"
+    },
+    {
+      "parameters": {
+        "sendTo": "YOUR_NOTIFICATION_EMAIL@example.com",
+        "subject": "={{ 'Daily Administrative Operations Brief - ' + $now.toFormat('yyyy-MM-dd') }}",
+        "message": "={{ $json.text }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1728,
+        -208
+      ],
+      "id": "f22c2008-06a7-4616-9e24-4fc3c155ad06",
+      "name": "Send Daily Operations Brief"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Daily Brief Schedule": {
+      "main": [
+        [
+          {
+            "node": "Load Administrative Requests",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Administrative Requests": {
+      "main": [
+        [
+          {
+            "node": "Filter Requests Needing Attention",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Requests Needing Attention": {
+      "main": [
+        [
+          {
+            "node": "Exclude Closed Requests",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Exclude Closed Requests": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Attention Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Attention Items": {
+      "main": [
+        [
+          {
+            "node": "Load Today’s Calendar Events",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Combine Requests & Schedule",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Today’s Calendar Events": {
+      "main": [
+        [
+          {
+            "node": "Combine Requests & Schedule",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Combine Requests & Schedule": {
+      "main": [
+        [
+          {
+            "node": "Generate Daily Operations Brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Daily Operations Brief": {
+      "main": [
+        [
+          {
+            "node": "Send Daily Operations Brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily Brief LLM": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Generate Daily Operations Brief",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "timezone": "Asia/Manila",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "nodeGroups": [],
+  "tags": []
+}

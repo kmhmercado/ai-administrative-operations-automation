@@ -1,0 +1,1025 @@
+{
+  "name": "AI Administrative Request Management System",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "admin-request",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -96,
+        0
+      ],
+      "id": "6ba01e81-3f9f-48ef-b4ea-025808b70b82",
+      "name": "Admin Request Webhook"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7ee4a163-ec0e-4525-bb25-64937082811e",
+              "name": "requester_name",
+              "value": "={{$json.body.name}}",
+              "type": "string"
+            },
+            {
+              "id": "c1c48974-fd2d-49e5-9427-f164593dc48f",
+              "name": "requester_email",
+              "value": "={{$json.body.email}}",
+              "type": "string"
+            },
+            {
+              "id": "554ec910-d131-4604-9ec0-afc2148f6e78",
+              "name": "department",
+              "value": "={{$json.body.department}}",
+              "type": "string"
+            },
+            {
+              "id": "489f798a-6447-4503-96a3-2e7c5a880e2f",
+              "name": "subject",
+              "value": "={{$json.body.subject}}",
+              "type": "string"
+            },
+            {
+              "id": "d5e9468a-f708-4d7d-b9a2-f864d75bf949",
+              "name": "request_details",
+              "value": "={{$json.body.requestDetails}}",
+              "type": "string"
+            },
+            {
+              "id": "e8c4a990-22e3-4c3a-afe0-b32722c68213",
+              "name": "requested_deadline",
+              "value": "={{$json.body.requestedDeadline}}",
+              "type": "string"
+            },
+            {
+              "id": "53d5104c-132f-45b0-87fb-4c3aa405ea19",
+              "name": "status",
+              "value": "New",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        128,
+        0
+      ],
+      "id": "3cdfae84-625e-4290-be69-c61564b8f262",
+      "name": "Normalize Request Data"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an administrative operations assistant.\n\nAnalyze the incoming administrative request and classify it for proper routing and follow-up.\n\nRequester: {{ $json.requester_name }}\nEmail: {{ $json.requester_email }}\nDepartment: {{ $json.department }}\nSubject: {{ $json.subject }}\nRequest Details: {{ $json.request_details }}\nRequested Deadline: {{ $json.requested_deadline }}\n\nReturn the following information:\n\n* category\n* priority\n* summary\n* action_required\n* suggested_deadline\n* requires_notification\n\nCategory must be one of:\n\n* Document Request\n* Scheduling\n* Finance/Admin\n* Procurement\n* Customer/Client Concern\n* Internal Support\n* General Inquiry\n* Other\n\nPriority must be one of:\n\n* Low\n* Medium\n* High\n* Urgent\n\nPriority definitions:\n\n* Low = Routine request with no meaningful time pressure.\n* Medium = Standard request that should be handled through the normal administrative workflow.\n* High = Important and time-sensitive, but does not require immediate action within hours.\n* Urgent = Immediate action is required, usually within hours or the same day. Failure to act could cause a missed critical deadline, compliance issue, financial impact, operational disruption, or blocked business process.\n\nrequires_notification must be true for High or Urgent requests, otherwise false.\n\nKeep the summary concise and business-like.\n\nDo not classify a request as Urgent only because the requester uses words such as \"urgent\" or \"ASAP\". Base the priority on the actual deadline, business impact, and consequences described in the request.",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        352,
+        0
+      ],
+      "id": "0155dfec-00d7-40c1-a415-ec6f1f460e39",
+      "name": "AI Request Classifier"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        352,
+        224
+      ],
+      "id": "feb30a74-816e-4838-9468-96483f943d69",
+      "name": "Classification LLM"
+    },
+    {
+      "parameters": {
+        "text": "={{ $json.text }}",
+        "attributes": {
+          "attributes": [
+            {
+              "name": "category",
+              "description": "Administrative request category."
+            },
+            {
+              "name": "priority",
+              "description": "Priority level: Low, Medium, High, or Urgent."
+            },
+            {
+              "name": "summary",
+              "description": "Short business-style summary of the request."
+            },
+            {
+              "name": "action_required",
+              "description": "Administrative action that should be taken."
+            },
+            {
+              "name": "suggested_deadline",
+              "description": "Suggested completion deadline."
+            },
+            {
+              "name": "requires_notification",
+              "type": "boolean",
+              "description": "True if priority is High or Urgent, otherwise false."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "typeVersion": 1.2,
+      "position": [
+        672,
+        0
+      ],
+      "id": "ff1506b7-05f0-47d1-8f18-5940bdee69a3",
+      "name": "Extract Request Classification"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        672,
+        224
+      ],
+      "id": "aa1cecea-6051-4d45-be32-5c47ec7da351",
+      "name": "Classification Extraction LLM"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output.category }}",
+                    "rightValue": "Scheduling",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "1eee2bf1-7226-4af3-8919-1e7b87fc7e95"
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        1040,
+        0
+      ],
+      "id": "6683512b-05b4-47cf-ad48-f825bb25e3b0",
+      "name": "Route by Request Category"
+    },
+    {
+      "parameters": {
+        "text": "=Requester: {{ $('Normalize Request Data').item.json.requester_name }}\nRequester Email: {{ $('Normalize Request Data').item.json.requester_email }}\nSubject: {{ $('Normalize Request Data').item.json.subject }}\nRequest: {{ $('Normalize Request Data').item.json.request_details }}\nRequested Deadline: {{ $('Normalize Request Data').item.json.requested_deadline }}",
+        "attributes": {
+          "attributes": [
+            {
+              "name": "meeting_title",
+              "description": "Short professional title for the calendar event."
+            },
+            {
+              "name": "meeting_date",
+              "description": "Requested meeting date in YYYY-MM-DD format."
+            },
+            {
+              "name": "start_time",
+              "description": "Requested start time in HH:mm 24-hour format."
+            },
+            {
+              "name": "end_time",
+              "description": "Requested end time in HH:mm 24-hour format. If not provided, infer a 1-hour meeting."
+            },
+            {
+              "name": "attendee_email",
+              "description": "Email address of the requester or attendee."
+            },
+            {
+              "name": "meeting_purpose",
+              "description": "Short summary of what the meeting is about."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "typeVersion": 1.2,
+      "position": [
+        1296,
+        -336
+      ],
+      "id": "2e39c15c-761b-4cea-a008-3397c0f0b4a3",
+      "name": "Extract Scheduling Details"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        1296,
+        -144
+      ],
+      "id": "bf272029-3471-4191-bfb2-79f385543fa5",
+      "name": "Scheduling Extraction LLM"
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_CALENDAR_ID",
+          "mode": "id"
+        },
+        "start": "={{ $json.output.meeting_date + 'T' + $json.output.start_time + ':00+08:00' }}",
+        "end": "={{ $json.output.meeting_date + 'T' + $json.output.end_time + ':00+08:00' }}",
+        "additionalFields": {
+          "attendees": [
+            "={{ $json.output.attendee_email }}"
+          ],
+          "description": "=Meeting Purpose: {{ $json.output.meeting_purpose }}  Requested By: {{ $('Normalize Request Data').item.json.requester_name }}  Requester Email: {{ $('Normalize Request Data').item.json.requester_email }}  Department: {{ $('Normalize Request Data').item.json.department }}  Original Request: {{ $('Normalize Request Data').item.json.request_details }}",
+          "summary": "={{ $json.output.meeting_title }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        1616,
+        -336
+      ],
+      "id": "5ca3325d-b913-43ad-b46f-4afd6ca380cd",
+      "name": "Create Calendar Event"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "request_id": "={{ 'ADM-' + $now.toISO().replace(/[-:.TZ]/g, '').slice(0, 14) }}",
+            "submitted_at": "={{ $now }}",
+            "requester_name": "={{ $('Normalize Request Data').item.json.requester_name }}",
+            "requester_email": "={{ $('Normalize Request Data').item.json.requester_email }}",
+            "department": "={{ $('Normalize Request Data').item.json.department }}",
+            "subject": "={{ $('Normalize Request Data').item.json.subject }}",
+            "request_details": "={{ $('Normalize Request Data').item.json.request_details }}",
+            "category": "=Scheduling",
+            "priority": "={{ $('Extract Request Classification').item.json.output.priority }}",
+            "summary": "={{ $('Extract Request Classification').item.json.output.summary }}",
+            "action_required": "={{ $('Extract Request Classification').item.json.output.action_required }}",
+            "suggested_deadline": "={{ $('Extract Request Classification').item.json.output.suggested_deadline }}",
+            "status": "Pending Confirmation",
+            "meeting_title": "={{ $json.summary }}",
+            "meeting_date": "={{ DateTime.fromISO($json.start.dateTime).toFormat('yyyy-MM-dd') }}\n",
+            "start_time": "={{ DateTime.fromISO($json.start.dateTime).toFormat('HH:mm') }}",
+            "end_time": "={{ DateTime.fromISO($json.end.dateTime).toFormat('HH:mm') }}",
+            "attendee_email": "={{ $json.attendees[0].email }}",
+            "calendar_event_id": "={{ $json.id }}",
+            "calendar_event_link": "={{ $json.htmlLink }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "request_id",
+              "displayName": "request_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "submitted_at",
+              "displayName": "submitted_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "requester_name",
+              "displayName": "requester_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "requester_email",
+              "displayName": "requester_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "department",
+              "displayName": "department",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "subject",
+              "displayName": "subject",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "request_details",
+              "displayName": "request_details",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "category",
+              "displayName": "category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "priority",
+              "displayName": "priority",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "summary",
+              "displayName": "summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "action_required",
+              "displayName": "action_required",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "suggested_deadline",
+              "displayName": "suggested_deadline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "meeting_title",
+              "displayName": "meeting_title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "meeting_date",
+              "displayName": "meeting_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "start_time",
+              "displayName": "start_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "end_time",
+              "displayName": "end_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "attendee_email",
+              "displayName": "attendee_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "calendar_event_id",
+              "displayName": "calendar_event_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "calendar_event_link",
+              "displayName": "calendar_event_link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1808,
+        -336
+      ],
+      "id": "1d0e3c3e-cdec-49a8-abff-f166ca16cf41",
+      "name": "Log Scheduling Request"
+    },
+    {
+      "parameters": {
+        "sendTo": "YOUR_NOTIFICATION_EMAIL@example.com",
+        "subject": "={{ 'Meeting Invitation Created: ' + $('Create Calendar Event').item.json.summary }}",
+        "message": "=<h2>Meeting Invitation Created</h2>\n\n<p>A calendar invitation has been created and is currently awaiting the attendee's response.</p>\n\n<p>\n<strong>Meeting:</strong><br>\n{{ $('Create Calendar Event').item.json.summary }}\n</p>\n\n<p>\n<strong>Date:</strong><br>\n{{ DateTime.fromISO($('Create Calendar Event').item.json.start.dateTime).toFormat('MMMM dd, yyyy') }}\n</p>\n\n<p>\n<strong>Time:</strong><br>\n{{ DateTime.fromISO($('Create Calendar Event').item.json.start.dateTime).toFormat('h:mm a') }}\n–\n{{ DateTime.fromISO($('Create Calendar Event').item.json.end.dateTime).toFormat('h:mm a') }}\n</p>\n\n<p>\n<strong>Time Zone:</strong><br>\nAsia/Manila\n</p>\n\n<p>\n<strong>Invitation Status:</strong><br>\nPending Confirmation\n</p>\n\n<hr>\n\n<p>\n<a href=\"{{ $('Create Calendar Event').item.json.htmlLink }}\">View this event in Google Calendar</a>\n</p>\n\n<p style=\"font-size: 12px;\">\nThis meeting invitation was automatically processed by the AI Administrative Operations & Scheduling System.\n</p>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        2000,
+        -336
+      ],
+      "id": "760b6ee6-305e-413c-a9eb-4ce640aec60f",
+      "name": "Send Meeting Invitation Notice"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output.priority }}",
+                    "rightValue": "Urgent",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "1c70f019-ec9c-41bf-90bc-e37272cd1bc3"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Urgent"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "49581d2d-ba2f-4cdc-bbed-e7d187113875",
+                    "leftValue": "={{ $json.output.priority }}",
+                    "rightValue": "High",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "High"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "0a26d085-9cb5-4372-9b99-f5627315de61",
+                    "leftValue": "={{ $json.output.priority }}",
+                    "rightValue": "Medium",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Medium"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "b56b4b52-a0ec-4fa6-87b9-19afd039d301",
+                    "leftValue": "={{ $json.output.priority }}",
+                    "rightValue": "Low",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Low"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        1312,
+        160
+      ],
+      "id": "dfbdff61-7165-4009-a5c1-d9d1acc6924e",
+      "name": "Route by Priority"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "requester_name": "={{ $('Normalize Request Data').item.json.requester_name }}",
+            "requester_email": "={{ $('Normalize Request Data').item.json.requester_email }}",
+            "department": "={{ $('Normalize Request Data').item.json.department }}",
+            "subject": "={{ $('Normalize Request Data').item.json.subject }}",
+            "request_details": "={{ $('Normalize Request Data').item.json.request_details }}",
+            "category": "={{ $json.output.category }}",
+            "priority": "={{ $json.output.priority }}",
+            "summary": "={{ $json.output.summary }}",
+            "action_required": "={{ $json.output.action_required }}",
+            "suggested_deadline": "= {{ $json.output.suggested_deadline }}",
+            "status": "={{ $('Normalize Request Data').item.json.status }}",
+            "request_id": "={{ 'ADM-' + $now.toISO().replace(/[-:.TZ]/g, '').slice(0, 14) }}",
+            "submitted_at": "={{ $now }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "request_id",
+              "displayName": "request_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "submitted_at",
+              "displayName": "submitted_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "requester_name",
+              "displayName": "requester_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "requester_email",
+              "displayName": "requester_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "department",
+              "displayName": "department",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "subject",
+              "displayName": "subject",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "request_details",
+              "displayName": "request_details",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "category",
+              "displayName": "category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "priority",
+              "displayName": "priority",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "summary",
+              "displayName": "summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "action_required",
+              "displayName": "action_required",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "suggested_deadline",
+              "displayName": "suggested_deadline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1696,
+        272
+      ],
+      "id": "7f87890d-36b6-4759-b682-713fe8a5a4b4",
+      "name": "Log Administrative Request"
+    },
+    {
+      "parameters": {
+        "sendTo": "YOUR_NOTIFICATION_EMAIL@example.com",
+        "subject": "={{ $json.output.priority.toUpperCase() }} PRIORITY ADMINISTRATIVE REQUEST",
+        "message": "=<h2>{{ $json.output.priority.toUpperCase() }} PRIORITY ADMINISTRATIVE REQUEST</h2>\n\n<p><strong>Category:</strong> {{ $json.output.category }}</p>\n\n<p><strong>Priority:</strong> {{ $json.output.priority }}</p>\n\n<p><strong>Summary:</strong><br>\n{{ $json.output.summary }}</p>\n\n<p><strong>Action Required:</strong><br>\n{{ $json.output.action_required }}</p>\n\n<p><strong>Suggested Deadline:</strong> {{ $json.output.suggested_deadline }}</p>\n\n<hr>\n\n<p><strong>Requester:</strong> {{ $('Normalize Request Data').item.json.requester_name }}</p>\n\n<p><strong>Department:</strong> {{ $('Normalize Request Data').item.json.department }}</p>\n\n<p><strong>Original Request:</strong><br>\n{{ $('Normalize Request Data').item.json.request_details }}</p>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1696,
+        48
+      ],
+      "id": "a666f385-434d-42d6-aa3e-a09d06e014af",
+      "name": "Send Priority Alert"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Admin Request Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Request Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Request Data": {
+      "main": [
+        [
+          {
+            "node": "AI Request Classifier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Request Classifier": {
+      "main": [
+        [
+          {
+            "node": "Extract Request Classification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classification LLM": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Request Classifier",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Request Classification": {
+      "main": [
+        [
+          {
+            "node": "Route by Request Category",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classification Extraction LLM": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Extract Request Classification",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Request Category": {
+      "main": [
+        [
+          {
+            "node": "Extract Scheduling Details",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Route by Priority",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Scheduling Details": {
+      "main": [
+        [
+          {
+            "node": "Create Calendar Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scheduling Extraction LLM": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Extract Scheduling Details",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Calendar Event": {
+      "main": [
+        [
+          {
+            "node": "Log Scheduling Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Scheduling Request": {
+      "main": [
+        [
+          {
+            "node": "Send Meeting Invitation Notice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Meeting Invitation Notice": {
+      "main": [
+        []
+      ]
+    },
+    "Route by Priority": {
+      "main": [
+        [
+          {
+            "node": "Log Administrative Request",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Priority Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Administrative Request",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Priority Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Administrative Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Administrative Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "timezone": "Asia/Manila",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "nodeGroups": [],
+  "tags": []
+}
